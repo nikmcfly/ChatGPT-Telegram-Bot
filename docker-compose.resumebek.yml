@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  resumebek:
+    build:
+      context: .
+      dockerfile: Dockerfile.resumebek
+    container_name: resumebek-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - BOT_MODE=resumebek
+      - RESUME_ANALYSIS_MODE=True
+    volumes:
+      - ./analytics:/app/analytics
+      - ./user_configs:/app/user_configs
+    networks:
+      - resumebek-network
+
+networks:
+  resumebek-network:
+    driver: bridge

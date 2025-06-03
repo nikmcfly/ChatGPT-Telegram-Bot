@@ -1,0 +1,29 @@
+FROM python:3.10-alpine AS builder
+COPY ./requirements.txt /tmp/
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
+
+FROM python:3.10-alpine
+EXPOSE 8080
+WORKDIR /app
+
+# Install git for submodules
+RUN apk add --no-cache git
+
+# Copy installed packages from builder
+COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
+
+# Copy entire project including Resumebek customizations
+COPY . /app/
+
+# Initialize git submodules
+RUN git submodule update --init --recursive
+
+# Create necessary directories
+RUN mkdir -p /app/analytics /app/user_configs
+
+# Set environment variables for Resumebek mode
+ENV BOT_MODE=resumebek
+ENV RESUME_ANALYSIS_MODE=True
+
+# Run the bot
+ENTRYPOINT ["python", "-u", "/app/bot.py"]

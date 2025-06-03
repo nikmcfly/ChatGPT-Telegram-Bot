@@ -11,7 +11,7 @@ from aient.src.aient.utils.prompt import translator_en2zh_prompt, translator_pro
 from aient.src.aient.utils.scripts import Document_extract, claude_replace
 from aient.src.aient.core.utils import get_engine, get_image_message, get_text_message
 import config
-from resume_handler import handle_document_resumebek
+from resume_handler_improved import handle_document_resumebek_improved as handle_document_resumebek
 from config import (
     WEB_HOOK,
     PORT,
@@ -936,9 +936,20 @@ async def post_init(application: Application) -> None:
         BotCommand('en2zh', 'Translate to Chinese'),
         BotCommand('zh2en', 'Translate to English'),
     ])
-    description = (
-        "I am an Assistant, a large language model trained by OpenAI. I will do my best to help answer your questions."
-    )
+    
+    if RESUME_ANALYSIS_MODE:
+        description = (
+            "I am Resumebek - your AI assistant for resume improvement! Send me your resume in PDF or Word format."
+        )
+        # Restore follow-up jobs on startup
+        from follow_up_persistent import persistent_followup
+        if application.job_queue:
+            persistent_followup.restore_jobs(application.job_queue)
+    else:
+        description = (
+            "I am an Assistant, a large language model trained by OpenAI. I will do my best to help answer your questions."
+        )
+    
     await application.bot.set_my_description(description)
 
 if __name__ == '__main__':
