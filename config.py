@@ -22,11 +22,17 @@ RESET_TIME = int(os.environ.get('RESET_TIME', '3600'))
 if RESET_TIME < 60:
     RESET_TIME = 60
 
-# Resume-specific configurations
-RESUME_ANALYSIS_MODE = True
+# Resume-specific configurations - Environment Variable Support
+RESUME_ANALYSIS_MODE_ENV = os.environ.get('RESUME_ANALYSIS_MODE', 'false').lower().strip()
+RESUME_ANALYSIS_MODE = RESUME_ANALYSIS_MODE_ENV in ['true', '1', 'yes', 'on', 'enabled']
+
+# Debug logging (remove after testing)
+print(f"DEBUG CONFIG: Environment RESUME_ANALYSIS_MODE = '{os.environ.get('RESUME_ANALYSIS_MODE', 'NOT_SET')}'")
+print(f"DEBUG CONFIG: Processed RESUME_ANALYSIS_MODE = {RESUME_ANALYSIS_MODE}")
+
 SUPPORTED_LANGUAGES = ['kk', 'ru', 'en']
-AI_PHOTOS_URL = "https://aiphotos.kz/student-pack"
-BOT_NAME = "Resumebek"
+AI_PHOTOS_URL = os.environ.get('AI_PHOTOS_URL', "https://aiphotos.kz/student-pack")
+BOT_NAME = os.environ.get('BOT_NAME', "Resumebek")
 
 # Resume-specific prompts
 RESUME_PROMPTS = {
