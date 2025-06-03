@@ -11,6 +11,7 @@ from aient.src.aient.utils.prompt import translator_en2zh_prompt, translator_pro
 from aient.src.aient.utils.scripts import Document_extract, claude_replace
 from aient.src.aient.core.utils import get_engine, get_image_message, get_text_message
 import config
+from resume_handler import handle_document_resumebek
 from config import (
     WEB_HOOK,
     PORT,
@@ -39,6 +40,7 @@ from config import (
     get_model_groups,
     CUSTOM_MODELS_LIST,
     MODEL_GROUPS,
+    RESUME_ANALYSIS_MODE,
 )
 
 from utils.i18n import strings
@@ -816,6 +818,9 @@ async def info(update, context):
 async def start(update, context): # 当用户输入/start时，返回文本
     _, _, _, _, _, _, _, _, convo_id, _, _, _ = await GetMesageInfo(update, context)
     user = update.effective_user
+    user_lang_code = user.language_code or 'ru'
+    user_lang_code = user_lang_code[:2]  # Get first 2 characters
+    
     if user.language_code == "zh-hans":
         update_language_status("Simplified Chinese", chat_id=convo_id)
     elif user.language_code == "zh-hant":
@@ -824,9 +829,51 @@ async def start(update, context): # 当用户输入/start时，返回文本
         update_language_status("Russian", chat_id=convo_id)
     else:
         update_language_status("English", chat_id=convo_id)
-    message = (
-        f"Hi `{user.username}` ! I am an Assistant, a large language model trained by OpenAI. I will do my best to help answer your questions.\n\n"
-    )
+    
+    if RESUME_ANALYSIS_MODE:
+        welcome_messages = {
+            'kk': """👋 Сәлем! Мен **Resumebek** - сіздің резюмені жақсартуға арналған AI көмекшісі!
+
+🔥 **Не істей аламын:**
+- Резюмеңізді қазақ, орыс, ағылшын тілдерінде талдаймын
+- Күшті және әлсіз жақтарын көрсетемін  
+- Нақты жақсарту ұсыныстарын беремін
+- Кәсіби сурет қосуға көмектесемін
+
+📄 **Басталу үшін резюмеңізді PDF немесе Word форматында жіберіңіз!**
+
+🎓 Студенттер үшін арнайы бағалар - 990₸""",
+
+            'ru': """👋 Привет! Я **Resumebek** - AI-помощник для улучшения вашего резюме!
+
+🔥 **Что я умею:**
+- Анализирую резюме на казахском, русском, английском
+- Выявляю сильные и слабые стороны
+- Даю конкретные рекомендации по улучшению
+- Помогаю добавить профессиональное фото
+
+📄 **Отправьте ваше резюме в PDF или Word формате для начала!**
+
+🎓 Специальные цены для студентов - 990₸""",
+
+            'en': """👋 Hello! I'm **Resumebek** - your AI assistant for resume improvement!
+
+🔥 **What I can do:**
+- Analyze resumes in Kazakh, Russian, English
+- Identify strengths and weaknesses
+- Provide specific improvement recommendations  
+- Help add professional photos
+
+📄 **Send your resume in PDF or Word format to get started!**
+
+🎓 Special student pricing - 990₸"""
+        }
+        
+        message = welcome_messages.get(user_lang_code, welcome_messages['ru'])
+    else:
+        message = (
+            f"Hi `{user.username}` ! I am an Assistant, a large language model trained by OpenAI. I will do my best to help answer your questions.\n\n"
+        )
     if len(context.args) == 2 and context.args[1].startswith("sk-"):
         api_url = context.args[0]
         api_key = context.args[1]
@@ -857,6 +904,11 @@ async def start(update, context): # 当用户输入/start时，返回文本
     # )
     # await update.message.reply_text(message, parse_mode='MarkdownV2', disable_web_page_preview=True)
     await update.message.reply_text(escape(message, italic=False), parse_mode='MarkdownV2', disable_web_page_preview=True)
+    
+    # Track user start for analytics
+    if RESUME_ANALYSIS_MODE:
+        from resume_handler import track_user_start
+        await track_user_start(update.effective_user.id, user_lang_code)
 
 async def error(update, context):
     traceback_string = traceback.format_exception(None, context.error, context.error.__traceback__)
@@ -926,6 +978,7 @@ if __name__ == '__main__':
                 filters.Document.PDF |
                 filters.Document.TXT |
                 filters.Document.DOC |
+                filters.Document.FileExtension("docx") |
                 filters.Document.FileExtension("jpg") |
                 filters.Document.FileExtension("jpeg") |
                 filters.Document.FileExtension("png") |
@@ -942,6 +995,7 @@ if __name__ == '__main__':
                 filters.Document.PDF |
                 filters.Document.TXT |
                 filters.Document.DOC |
+                filters.Document.FileExtension("docx") |
                 filters.Document.FileExtension("jpg") |
                 filters.Document.FileExtension("jpeg") |
                 filters.Document.FileExtension("png") |
@@ -951,7 +1005,7 @@ if __name__ == '__main__':
                 filters.AUDIO |
                 filters.Document.FileExtension("wav")
             )
-        ), handle_file))
+        ), handle_document_resumebek if RESUME_ANALYSIS_MODE else handle_file))
     application.add_handler(MessageHandler(filters.COMMAND, unknown))
     application.add_error_handler(error)
 
